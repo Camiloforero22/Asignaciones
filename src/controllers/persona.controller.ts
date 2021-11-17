@@ -1,3 +1,4 @@
+import { service } from '@loopback/core';
 import {
   Count,
   CountSchema,
@@ -19,11 +20,14 @@ import {
 } from '@loopback/rest';
 import {Persona} from '../models';
 import {PersonaRepository} from '../repositories';
+import { NotificacionSmsService } from '../services';
 
 export class PersonaController {
   constructor(
     @repository(PersonaRepository)
     public personaRepository : PersonaRepository,
+    @service(NotificacionSmsService)
+    public NotificacionSMS : NotificacionSmsService
   ) {}
 
   @post('/personas')
@@ -44,6 +48,7 @@ export class PersonaController {
     })
     persona: Omit<Persona, 'id'>,
   ): Promise<Persona> {
+    this.NotificacionSMS.NotificacionSMS(persona.celular);
     return this.personaRepository.create(persona);
   }
 
