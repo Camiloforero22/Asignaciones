@@ -21,13 +21,19 @@ import {
 import {Persona} from '../models';
 import {PersonaRepository} from '../repositories';
 import { NotificacionSmsService } from '../services';
+import { AutenticacionService } from '../services';
+import {NotificacionCorreoService} from '../services';
 
 export class PersonaController {
   constructor(
     @repository(PersonaRepository)
     public personaRepository : PersonaRepository,
     @service(NotificacionSmsService)
-    public NotificacionSMS : NotificacionSmsService
+    public NotificacionSMS : NotificacionSmsService,
+    @service(AutenticacionService)
+    public servicioAutenticacion : AutenticacionService,
+    @service(NotificacionCorreoService)
+    public servicioCorreo : NotificacionCorreoService
   ) {}
 
   @post('/personas')
@@ -48,8 +54,18 @@ export class PersonaController {
     })
     persona: Omit<Persona, 'id'>,
   ): Promise<Persona> {
+    let clave = this.servicioAutenticacion.GenerarClave();
+    let claveCifrada = this.servicioAutenticacion.CifrarClave(clave);
+    persona.clave = claveCifrada;
+
     this.NotificacionSMS.NotificacionSMS(persona.celular);
-    return this.personaRepository.create(persona);
+    let p = await this.personaRepository.create(persona);
+    
+    //Notificar al usuario
+    let texto = `Hola ${persona.nombre}, su nombre de usuario es: ${persona.correo}, y su contraseña es: ${clave}`;
+    this.servicioCorreo.EnviarCorreo(persona.correo,texto);
+
+    return p;
   }
 
   @get('/personas/count')
