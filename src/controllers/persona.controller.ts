@@ -1,28 +1,23 @@
-import { service } from '@loopback/core';
+import {service} from '@loopback/core';
 import {
   Count,
   CountSchema,
   Filter,
   FilterExcludingWhere,
   repository,
-  Where,
+  Where
 } from '@loopback/repository';
 import {
-  post,
-  param,
-  get,
-  getModelSchemaRef,
-  patch,
-  put,
-  del,
-  requestBody,
-  response,
+  del, get,
+  getModelSchemaRef, param, patch, post, put, requestBody,
+  response
 } from '@loopback/rest';
 import {Persona} from '../models';
+import {Mensaje} from '../models/mensaje.model';
 import {PersonaRepository} from '../repositories';
-import { NotificacionSmsService } from '../services';
-import { AutenticacionService } from '../services';
-import {NotificacionCorreoService} from '../services';
+import {MensajeRepository} from '../repositories/mensaje.repository';
+import {AutenticacionService} from '../services';
+import {NotificacionSmsService} from '../services/notificacion-sms.service';
 
 export class PersonaController {
   constructor(
@@ -32,8 +27,10 @@ export class PersonaController {
     public NotificacionSMS : NotificacionSmsService,
     @service(AutenticacionService)
     public servicioAutenticacion : AutenticacionService,
-    @service(NotificacionCorreoService)
-    public servicioCorreo : NotificacionCorreoService
+    @repository(MensajeRepository)
+    public mensajeRepository : MensajeRepository
+    /*@service(NotificacionCorreoService)
+    public servicioCorreo : NotificacionCorreoService*/
   ) {}
 
   @post('/personas')
@@ -58,14 +55,23 @@ export class PersonaController {
     let claveCifrada = this.servicioAutenticacion.CifrarClave(clave);
     persona.clave = claveCifrada;
 
-    this.NotificacionSMS.NotificacionSMS(persona.celular);
+
     let p = await this.personaRepository.create(persona);
-    
+
     //Notificar al usuario
     let texto = `Hola ${persona.nombre}, su nombre de usuario es: ${persona.correo}, y su contraseña es: ${clave}`;
-    this.servicioCorreo.EnviarCorreo(persona.correo,texto);
+    this.NotificacionSMS.EnviarSMS(persona.celular,texto);
+
+    let mensaje = new Mensaje({
+      MensajeEmpleado : texto,
+      CelularEmpleado : persona.celular
+    })
+
+    this.mensajeRepository.create(mensaje);
+
 
     return p;
+
   }
 
   @get('/personas/count')
